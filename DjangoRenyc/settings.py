@@ -105,6 +105,10 @@ EMAIL_HOST = 'smtp.163.com' # 发送邮件_发送方的smtp服务器地址
 EMAIL_PORT = 25 # 发送邮件_smtp服务端口，默认为25
 EMAIL_HOST_USER = 'renyongchenghh@163.com' # 发送邮件_发送服务器的用户名
 EMAIL_HOST_PASSWORD = 'ITGFGKQILQUJDYDI' # 发送邮件_对应用户的授权码，不是密码
+
+# 注册有效期天数
+CONFIRM_DAYS = 7
+
 # Internationalization
 # https://docs.djangoproject.com/en/4.0/topics/i18n/
 

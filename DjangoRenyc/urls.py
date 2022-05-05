@@ -25,5 +25,7 @@ urlpatterns = [
     path('register/', views.register),  # renyc新加
     path('logout/', views.logout),  # renyc新加
     path('captcha/', include('captcha.urls')),   # 验证码所需
+    path('confirm/', views.user_confirm), # 邮箱确认
+
 
 ]

@@ -3,6 +3,9 @@ from django.shortcuts import redirect
 from . import models
 from . import forms
 import hashlib
+import datetime
+from .import sendEmailConfirm
+from django.conf import settings
 # Create your views here.
 
 
@@ -26,6 +29,10 @@ def login(request):
                 user = models.User.objects.get(name=username)
             except :
                 message = '用户不存在！'
+                return render(request, 'login/templates/login.html', locals())
+
+            if not user.has_confirmed: # 邮件确认_是否已确认
+                message = '该用户还未经过邮件确认！'
                 return render(request, 'login/templates/login.html', locals())
 
             if user.password == hash_code(password): # 密码加密相关
@@ -76,8 +83,12 @@ def register(request):
                 new_user.email = email
                 new_user.sex = sex
                 new_user.save()
+                code = make_confirm_string(new_user) # 邮箱确认
+                sendEmailConfirm.send_email_confirm(email, code) # 邮箱确认
 
-                return redirect('/login/')
+                message = '请前往邮箱进行确认！' # 邮箱确认
+                return render(request, 'login/templates/confirm.html', locals())
+                # return redirect('/login/')
         else:
             return render(request, 'login/templates/register.html', locals())
     register_form = forms.RegisterForm()
@@ -103,3 +114,44 @@ def hash_code(s, salt='mysite'):# hash加密
     s += salt
     h.update(s.encode())  # update方法只接收bytes类型
     return h.hexdigest()
+
+# 邮件确认相关
+# 首先利用datetime模块生成一个当前时间的字符串now，
+# 再调用前面编写的hash_code()以用户名为基础，now为‘盐’，生成一个独一无二的哈希值，再调用
+def make_confirm_string(user):  # 邮件确认相关
+    now = datetime.datetime.now().strftime("%Y-%m-%d %H:%M:%S")  # 邮件确认相关
+    code = hash_code(user.name, now)  # 邮件确认相关
+
+    #ConfirmString模型的create()方法，生成并保存一个确认码对象。最后返回这个哈希值
+    models.ConfirmString.objects.create(code=code, user=user, )  # 邮件确认相关
+    return code  # 邮件确认相关
+# 邮件确认相关
+# 邮件确认相关
+def user_confirm(request):
+    # 从请求的url地址中获取确认码;
+    code = request.GET.get('code', None)
+    message = ''
+    try:
+        # 先去数据库内查询是否有对应的确认码;
+        confirm = models.ConfirmString.objects.get(code=code)
+    except:
+        # 如果没有，返回confirm.html页面，并提示;
+        message = '无效的确认请求!'
+        return render(request, 'login/templates/confirm.html', locals())
+    # 如果有，获取注册的时间c_time，加上设置的过期天数，这里是7天，然后与现在时间点进行对比；
+    c_time = confirm.c_time
+    now = datetime.datetime.now()
+    # 如果时间已经超期，删除注册的用户，同时注册码也会一并删除
+    # 然后返回confirm.html页面，并提示;
+    if now > c_time + datetime.timedelta(settings.CONFIRM_DAYS):
+        confirm.user.delete()
+        message = '您的邮件已经过期！请重新注册!'
+        return render(request, 'login/templates/confirm.html', locals())
+    else:
+        # 如果未超期，修改用户的has_confirmed字段为True，并保存，表示通过确认了。
+        # 然后删除注册码，但不删除用户本身。最后返回confirm.html页面，并提示。
+        confirm.user.has_confirmed = True
+        confirm.user.save()
+        confirm.delete()
+        message = '感谢确认，请使用账户登录！'
+        return render(request, 'login/templates/confirm.html', locals())
