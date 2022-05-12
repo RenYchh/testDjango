@@ -1,0 +1,7 @@
+#encoding=utf-8
+# 包含一些其它的文件，比如静态文件、templates模板等非Python语言编写的文件
+include LICENSE
+include README.rst
+recursive-include login/static *
+recursive-include login/templates *
+recursive-include docs *
